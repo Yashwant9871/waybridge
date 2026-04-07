@@ -386,3 +386,41 @@ dotnet run --project WaybridgeApp.csproj
 # Publish for Windows x64 (self-contained)
 dotnet publish WaybridgeApp.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
 ```
+
+---
+
+## 12) Build a Single `.exe` to Share with End Users
+
+If you need one executable to hand to an operator/user, run this on a Windows machine with .NET 8 SDK installed:
+
+```powershell
+dotnet publish .\WaybridgeApp.csproj `
+  -c Release `
+  -r win-x64 `
+  --self-contained true `
+  -p:PublishSingleFile=true `
+  -p:IncludeNativeLibrariesForSelfExtract=true
+```
+
+Primary output path:
+
+```text
+.\bin\Release\net8.0-windows\win-x64\publish\WaybridgeApp.exe
+```
+
+Optional: package for delivery:
+
+```powershell
+Compress-Archive `
+  -Path .\bin\Release\net8.0-windows\win-x64\publish\* `
+  -DestinationPath .\WaybridgeApp-win-x64.zip `
+  -Force
+```
+
+Share `WaybridgeApp-win-x64.zip` with the user, then they can extract and run `WaybridgeApp.exe`.
+
+You can also run the included helper script:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\publish-win-x64.ps1
+```
