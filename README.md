@@ -16,6 +16,26 @@ The core operator flow is:
 
 ---
 
+## Deployment Profile Notes (Your Setup)
+
+If you are developing in Visual Studio without hardware attached right now, use this project behavior:
+
+- No active weighbridge device connected: COM list can be empty and weight will not update.
+- No camera connected: camera list can be empty and frame preview/capture will not work.
+- This is expected in a hardware-free development session.
+
+For your production setup:
+
+- **Weighbridge model:** Mettler Toledo TMD (serial output expected by current app flow).
+- **Camera:** LAN/IP camera.
+
+Important implementation note:
+
+- Current `CameraService` uses `AForge.Video.DirectShow`, which reads **local Windows video capture devices** (USB/UVC and similar), not LAN/IP streams.
+- If production camera is LAN/IP only, camera integration must be extended to an IP-stream-compatible implementation before go-live.
+
+---
+
 ## 1) Tech Stack and Runtime Requirements
 
 - **Language/Framework:** C# / WPF / .NET 8 (`net8.0-windows`)
