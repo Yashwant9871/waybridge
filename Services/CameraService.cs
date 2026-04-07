@@ -1,135 +1,202 @@
-using System.Drawing;
-using System.Drawing.Imaging;
-using System.IO;
+using OpenCvSharp;
+using OpenCvSharp.Extensions;
 using System.Windows.Media.Imaging;
-using AForge.Video;
-using AForge.Video.DirectShow;
 
 namespace WaybridgeApp.Services;
 
 public sealed class CameraService : IDisposable
 {
     private readonly object _sync = new();
-    private FilterInfoCollection? _videoDevices;
-    private VideoCaptureDevice? _videoSource;
-    private Bitmap? _lastFrame;
+    private VideoCapture? _capture;
+    private CancellationTokenSource? _previewCts;
+    private Task? _previewTask;
+    private Mat? _lastFrame;
 
-    public event Action<BitmapImage>? FrameReady;
+    public event Action<BitmapSource>? FrameReady;
     public event Action<string>? ErrorOccurred;
 
-    public IReadOnlyList<string> GetCameraNames()
-    {
-        _videoDevices = new FilterInfoCollection(FilterCategory.VideoInputDevice);
-        return _videoDevices.Cast<FilterInfo>().Select(d => d.Name).ToList();
-    }
+    public bool IsRunning { get; private set; }
 
-    public void Start(int deviceIndex)
+    public async Task<IReadOnlyList<string>> GetCameraNamesAsync(int maxDevices = 10)
     {
-        try
+        return await Task.Run(() =>
         {
-            Stop();
-
-            if (_videoDevices is null)
+            var cameras = new List<string>();
+            for (var i = 0; i < maxDevices; i++)
             {
-                _videoDevices = new FilterInfoCollection(FilterCategory.VideoInputDevice);
+                using var probe = new VideoCapture(i, VideoCaptureAPIs.DSHOW);
+                if (!probe.IsOpened())
+                {
+                    continue;
+                }
+
+                cameras.Add($"Camera {i}");
+                probe.Release();
             }
 
-            if (_videoDevices.Count == 0 || deviceIndex < 0 || deviceIndex >= _videoDevices.Count)
-            {
-                throw new InvalidOperationException("No valid camera device selected.");
-            }
-
-            _videoSource = new VideoCaptureDevice(_videoDevices[deviceIndex].MonikerString);
-            _videoSource.NewFrame += OnNewFrame;
-            _videoSource.Start();
-        }
-        catch (Exception ex)
-        {
-            ErrorOccurred?.Invoke($"Camera start failed: {ex.Message}");
-        }
+            return (IReadOnlyList<string>)cameras;
+        });
     }
 
-    private void OnNewFrame(object sender, NewFrameEventArgs eventArgs)
+    public async Task StartAsync(int deviceIndex, CancellationToken cancellationToken = default)
     {
-        try
+        await StopAsync();
+
+        var capture = new VideoCapture(deviceIndex, VideoCaptureAPIs.DSHOW);
+        if (!capture.IsOpened())
         {
-            using var frame = (Bitmap)eventArgs.Frame.Clone();
-
-            lock (_sync)
-            {
-                _lastFrame?.Dispose();
-                _lastFrame = (Bitmap)frame.Clone();
-            }
-
-            using var ms = new MemoryStream();
-            frame.Save(ms, ImageFormat.Bmp);
-            ms.Position = 0;
-
-            var bitmapImage = new BitmapImage();
-            bitmapImage.BeginInit();
-            bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
-            bitmapImage.StreamSource = ms;
-            bitmapImage.EndInit();
-            bitmapImage.Freeze();
-
-            FrameReady?.Invoke(bitmapImage);
+            capture.Dispose();
+            throw new InvalidOperationException($"Unable to open camera device index {deviceIndex}.");
         }
-        catch (Exception ex)
-        {
-            ErrorOccurred?.Invoke($"Camera frame error: {ex.Message}");
-        }
-    }
 
-    // Camera capture stores the current frame as JPEG for traceability.
-    public string CaptureToJpeg(string imagesFolder, string vehicleNo)
-    {
+        capture.FrameWidth = 1280;
+        capture.FrameHeight = 720;
+        capture.Fps = 30;
+
         lock (_sync)
         {
-            if (_lastFrame is null)
-            {
-                throw new InvalidOperationException("No frame is available to capture.");
-            }
-
-            Directory.CreateDirectory(imagesFolder);
-            var safeVehicle = string.Concat(vehicleNo.Where(ch => !Path.GetInvalidFileNameChars().Contains(ch)));
-            var fileName = $"{safeVehicle}_{DateTime.Now:yyyyMMdd_HHmmss}.jpg";
-            var filePath = Path.Combine(imagesFolder, fileName);
-            _lastFrame.Save(filePath, ImageFormat.Jpeg);
-            return filePath;
+            _capture = capture;
+            _lastFrame?.Dispose();
+            _lastFrame = null;
         }
+
+        _previewCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _previewTask = Task.Run(() => PreviewLoop(_previewCts.Token), _previewCts.Token);
+        IsRunning = true;
+
+        await Task.CompletedTask;
     }
 
-    public void Stop()
+    public async Task<string> CaptureFrameAsync(string imagesFolder, string vehicleNo, CancellationToken cancellationToken = default)
     {
-        if (_videoSource is null)
+        var frame = await Task.Run(() =>
         {
-            return;
-        }
+            lock (_sync)
+            {
+                if (_lastFrame is null || _lastFrame.Empty())
+                {
+                    throw new InvalidOperationException("No frame is available to capture.");
+                }
+
+                return _lastFrame.Clone();
+            }
+        }, cancellationToken);
 
         try
         {
-            _videoSource.NewFrame -= OnNewFrame;
-            if (_videoSource.IsRunning)
+            Directory.CreateDirectory(imagesFolder);
+
+            var safeVehicle = string.Concat(vehicleNo.Where(ch => !Path.GetInvalidFileNameChars().Contains(ch)));
+            if (string.IsNullOrWhiteSpace(safeVehicle))
             {
-                _videoSource.SignalToStop();
-                _videoSource.WaitForStop();
+                safeVehicle = "vehicle";
             }
 
-            _videoSource = null;
+            var fileName = $"{safeVehicle}_{DateTime.Now:yyyyMMdd_HHmmss}.jpg";
+            var filePath = Path.Combine(imagesFolder, fileName);
+
+            await Task.Run(() => Cv2.ImWrite(filePath, frame), cancellationToken);
+            return filePath;
         }
-        catch (Exception ex)
+        finally
         {
-            ErrorOccurred?.Invoke($"Camera stop failed: {ex.Message}");
+            frame.Dispose();
+        }
+    }
+
+    public async Task StopAsync()
+    {
+        IsRunning = false;
+
+        var cts = _previewCts;
+        _previewCts = null;
+
+        if (cts is not null)
+        {
+            cts.Cancel();
+            cts.Dispose();
+        }
+
+        var previewTask = _previewTask;
+        _previewTask = null;
+        if (previewTask is not null)
+        {
+            try
+            {
+                await previewTask;
+            }
+            catch (OperationCanceledException)
+            {
+                // expected on stop
+            }
+            catch (Exception ex)
+            {
+                ErrorOccurred?.Invoke($"Camera preview loop stopped with error: {ex.Message}");
+            }
+        }
+
+        lock (_sync)
+        {
+            _capture?.Release();
+            _capture?.Dispose();
+            _capture = null;
+
+            _lastFrame?.Dispose();
+            _lastFrame = null;
+        }
+    }
+
+    private void PreviewLoop(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                Mat frame = new();
+                try
+                {
+                    VideoCapture? capture;
+                    lock (_sync)
+                    {
+                        capture = _capture;
+                    }
+
+                    if (capture is null || !capture.IsOpened())
+                    {
+                        frame.Dispose();
+                        break;
+                    }
+
+                    if (!capture.Read(frame) || frame.Empty())
+                    {
+                        frame.Dispose();
+                        continue;
+                    }
+
+                    lock (_sync)
+                    {
+                        _lastFrame?.Dispose();
+                        _lastFrame = frame.Clone();
+                    }
+
+                    var preview = BitmapSourceConverter.ToBitmapSource(frame);
+                    preview.Freeze();
+                    FrameReady?.Invoke(preview);
+                }
+                finally
+                {
+                    frame.Dispose();
+                }
+            }
+            catch (Exception ex)
+            {
+                ErrorOccurred?.Invoke($"Camera frame error: {ex.Message}");
+            }
         }
     }
 
     public void Dispose()
     {
-        Stop();
-        lock (_sync)
-        {
-            _lastFrame?.Dispose();
-            _lastFrame = null;
-        }
+        StopAsync().GetAwaiter().GetResult();
     }
 }

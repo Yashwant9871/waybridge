@@ -25,9 +25,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private string _applicationNo = string.Empty;
     private string _vehicleNo = string.Empty;
     private string _itemNo = string.Empty;
-    private BitmapImage? _cameraFrame;
+    private BitmapSource? _cameraFrame;
     private string? _capturedImagePath;
     private string _selectedCamera = string.Empty;
+    private string _cameraStatus = "Idle";
+    private bool _isBusy;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -35,6 +37,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     public ObservableCollection<string> Cameras { get; } = new();
 
     public ICommand ConnectCommand { get; }
+    public ICommand RefreshCamerasCommand { get; }
     public ICommand StartCameraCommand { get; }
     public ICommand CaptureCommand { get; }
     public ICommand SubmitCommand { get; }
@@ -49,20 +52,22 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         _databaseService = new DatabaseService(connectionString);
 
         _serialService.WeightReceived += OnWeightReceived;
-        _serialService.StatusChanged += status => Application.Current.Dispatcher.Invoke(() => ConnectionStatus = status);
+        _serialService.StatusChanged += status => Application.Current.Dispatcher.InvokeAsync(() => ConnectionStatus = status);
         _serialService.ErrorOccurred += ShowError;
 
-        _cameraService.FrameReady += frame => Application.Current.Dispatcher.Invoke(() => CameraFrame = frame);
+        _cameraService.FrameReady += frame =>
+            Application.Current.Dispatcher.InvokeAsync(() => CameraFrame = frame);
         _cameraService.ErrorOccurred += ShowError;
 
         ConnectCommand = new RelayCommand(_ => ConnectToSerial(), _ => !string.IsNullOrWhiteSpace(SelectedComPort));
-        StartCameraCommand = new RelayCommand(_ => StartCamera(), _ => !string.IsNullOrWhiteSpace(SelectedCamera));
-        CaptureCommand = new RelayCommand(_ => CaptureImage(), _ => !string.IsNullOrWhiteSpace(VehicleNo));
-        SubmitCommand = new RelayCommand(async _ => await SubmitAsync(), _ => CanSubmit());
-        ResetCommand = new RelayCommand(_ => ResetForm());
+        RefreshCamerasCommand = new RelayCommand(async _ => await RefreshCamerasAsync(), _ => !IsBusy);
+        StartCameraCommand = new RelayCommand(async _ => await StartCameraAsync(), _ => !IsBusy && !string.IsNullOrWhiteSpace(SelectedCamera));
+        CaptureCommand = new RelayCommand(async _ => await CaptureImageAsync(), _ => !IsBusy && !string.IsNullOrWhiteSpace(VehicleNo));
+        SubmitCommand = new RelayCommand(async _ => await SubmitAsync(), _ => !IsBusy && CanSubmit());
+        ResetCommand = new RelayCommand(_ => ResetForm(), _ => !IsBusy);
 
         LoadComPorts();
-        LoadCameras();
+        _ = RefreshCamerasAsync();
     }
 
     public string SelectedComPort
@@ -93,6 +98,24 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     {
         get => _connectionStatus;
         set => SetProperty(ref _connectionStatus, value);
+    }
+
+    public string CameraStatus
+    {
+        get => _cameraStatus;
+        set => SetProperty(ref _cameraStatus, value);
+    }
+
+    public bool IsBusy
+    {
+        get => _isBusy;
+        set
+        {
+            if (SetProperty(ref _isBusy, value))
+            {
+                RaiseCommandStates();
+            }
+        }
     }
 
     public double CurrentWeight
@@ -151,7 +174,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
-    public BitmapImage? CameraFrame
+    public BitmapSource? CameraFrame
     {
         get => _cameraFrame;
         set => SetProperty(ref _cameraFrame, value);
@@ -160,7 +183,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     public void Cleanup()
     {
         _serialService.Disconnect();
-        _cameraService.Stop();
+        _cameraService.StopAsync().GetAwaiter().GetResult();
     }
 
     private void LoadComPorts()
@@ -177,29 +200,66 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
-    private void LoadCameras()
+    private async Task RefreshCamerasAsync()
     {
-        Cameras.Clear();
-        foreach (var camera in _cameraService.GetCameraNames())
+        try
         {
-            Cameras.Add(camera);
-        }
+            IsBusy = true;
+            Cameras.Clear();
+            var cameraNames = await _cameraService.GetCameraNamesAsync();
+            foreach (var camera in cameraNames)
+            {
+                Cameras.Add(camera);
+            }
 
-        if (Cameras.Count > 0)
-        {
+            if (Cameras.Count == 0)
+            {
+                SelectedCamera = string.Empty;
+                CameraStatus = "No camera detected";
+                ShowError("No USB camera detected. Check the device connection and try again.");
+                return;
+            }
+
             SelectedCamera = Cameras[0];
-            StartCamera();
+            CameraStatus = "Camera detected";
+            await StartCameraAsync();
+        }
+        catch (Exception ex)
+        {
+            CameraStatus = "Error";
+            ShowError($"Failed to refresh cameras: {ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
         }
     }
 
     private void ConnectToSerial() => _serialService.Connect(SelectedComPort);
 
-    private void StartCamera()
+    private async Task StartCameraAsync()
     {
         var index = Cameras.IndexOf(SelectedCamera);
-        if (index >= 0)
+        if (index < 0)
         {
-            _cameraService.Start(index);
+            CameraStatus = "No camera selected";
+            return;
+        }
+
+        try
+        {
+            IsBusy = true;
+            await _cameraService.StartAsync(index);
+            CameraStatus = $"Running ({SelectedCamera})";
+        }
+        catch (Exception ex)
+        {
+            CameraStatus = "Error";
+            ShowError($"Camera start failed: {ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
         }
     }
 
@@ -213,7 +273,6 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         });
     }
 
-    // Stable weight logic: keep last 5 readings and ensure a low variance over 2-3 seconds.
     private void UpdateWeightStability(double weight)
     {
         var now = DateTime.UtcNow;
@@ -236,19 +295,23 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         IsWeightStable = varianceOk && durationOk;
     }
 
-    // Camera capture saves a local JPEG and keeps the path for DB persistence.
-    private void CaptureImage()
+    private async Task CaptureImageAsync()
     {
         try
         {
+            IsBusy = true;
             var imageFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Images");
-            _capturedImagePath = _cameraService.CaptureToJpeg(imageFolder, VehicleNo.Trim());
+            _capturedImagePath = await _cameraService.CaptureFrameAsync(imageFolder, VehicleNo.Trim());
             MessageBox.Show("Image captured successfully.", "Capture", MessageBoxButton.OK, MessageBoxImage.Information);
             RaiseCommandStates();
         }
         catch (Exception ex)
         {
             ShowError(ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
         }
     }
 
@@ -269,6 +332,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
         try
         {
+            IsBusy = true;
             var record = new WeightRecord
             {
                 ApplicationNo = ApplicationNo.Trim(),
@@ -285,6 +349,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         catch (Exception ex)
         {
             ShowError($"Database error: {ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
         }
     }
 
@@ -343,9 +411,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private void RaiseCommandStates()
     {
         ((RelayCommand)ConnectCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)RefreshCamerasCommand).RaiseCanExecuteChanged();
         ((RelayCommand)StartCameraCommand).RaiseCanExecuteChanged();
         ((RelayCommand)CaptureCommand).RaiseCanExecuteChanged();
         ((RelayCommand)SubmitCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)ResetCommand).RaiseCanExecuteChanged();
     }
 
     public void Dispose()
