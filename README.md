@@ -51,6 +51,12 @@ Install the following before running:
      dotnet --version
      ```
    - You should see an `8.x.x` version.
+   - This repository includes a `global.json` file to pin the SDK for VS Code and CLI builds.
+   - If your machine default is `.NET 10`, install `.NET 8 SDK` as well and run:
+     ```bash
+     dotnet --list-sdks
+     ```
+     Confirm at least one `8.0.xxx` entry exists.
 
 2. **SQL Server**
    - Any edition works as long as you can create a database and connect with your chosen auth mode.
@@ -195,6 +201,28 @@ dotnet build -c Release
 ```
 
 Expected outcome: no compile errors.
+
+---
+
+## 8) VS Code Troubleshooting (SDK 10 installed)
+
+If the project does not open/build in VS Code and your default SDK is `.NET 10`, use this checklist:
+
+1. Install **.NET 8 SDK** (required by this project target: `net8.0-windows`).
+2. Confirm SDKs:
+   ```bash
+   dotnet --list-sdks
+   ```
+3. From repository root, verify pinned SDK resolution:
+   ```bash
+   dotnet --version
+   ```
+   Expected: an `8.0.xxx` value (because of `global.json`).
+4. In VS Code:
+   - Install/update the **C# Dev Kit** extension.
+   - Run **Developer: Reload Window**.
+   - Run **.NET: Restore** or execute `dotnet restore` in terminal.
+5. On non-Windows machines, WPF projects (`net8.0-windows`) will not run; use Windows 10/11 for this app.
 
 ### B) Manual functional test plan (recommended)
 
