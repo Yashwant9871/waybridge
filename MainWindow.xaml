@@ -15,7 +15,6 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Header with logo and branding -->
         <Border Grid.Row="0" Background="#2C2C2C" CornerRadius="8" Padding="12" Margin="0,0,0,16">
             <DockPanel>
                 <Image Source="Assets/logo.png" Height="50" Width="120" Stretch="Uniform" DockPanel.Dock="Left" Margin="0,0,16,0"/>
@@ -52,7 +51,11 @@
                 <StackPanel>
                     <TextBlock Text="Camera" FontWeight="Bold" FontSize="16" Foreground="#2C2C2C"/>
                     <ComboBox ItemsSource="{Binding Cameras}" SelectedItem="{Binding SelectedCamera}" Margin="0,8,0,0" MinHeight="32"/>
-                    <Button Content="Start Camera" Command="{Binding StartCameraCommand}" Margin="0,8,0,0" MinHeight="34" Background="#2C2C2C" Foreground="White"/>
+                    <TextBlock Text="{Binding CameraStatus}" Margin="0,8,0,0" Foreground="#2C2C2C"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button Content="Refresh" Command="{Binding RefreshCamerasCommand}" MinHeight="34" Width="90" Background="#F0F0F0" Foreground="#2C2C2C"/>
+                        <Button Content="Start Camera" Command="{Binding StartCameraCommand}" MinHeight="34" Width="110" Margin="8,0,0,0" Background="#2C2C2C" Foreground="White"/>
+                    </StackPanel>
                 </StackPanel>
             </Border>
         </Grid>
