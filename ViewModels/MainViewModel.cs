@@ -126,6 +126,33 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
     public string WeightDisplay => $"{CurrentWeight:0} kg";
 
+    public string CaptureStatus => string.IsNullOrWhiteSpace(_capturedImagePath)
+        ? "No image captured yet"
+        : $"Captured: {Path.GetFileName(_capturedImagePath)}";
+
+    public string SubmissionReadiness
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(ApplicationNo) || string.IsNullOrWhiteSpace(VehicleNo) || string.IsNullOrWhiteSpace(ItemNo))
+            {
+                return "Fill Application No, Vehicle No, and Item No to continue.";
+            }
+
+            if (!IsWeightStable)
+            {
+                return "Wait until weight is stable before submit.";
+            }
+
+            if (string.IsNullOrWhiteSpace(_capturedImagePath))
+            {
+                return "Capture an image to enable submit.";
+            }
+
+            return "Ready to submit the record.";
+        }
+    }
+
     public bool IsWeightStable
     {
         get => _isWeightStable;
@@ -133,6 +160,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             if (SetProperty(ref _isWeightStable, value))
             {
+                OnPropertyChanged(nameof(SubmissionReadiness));
                 RaiseCommandStates();
             }
         }
@@ -145,6 +173,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             if (SetProperty(ref _applicationNo, value))
             {
+                OnPropertyChanged(nameof(SubmissionReadiness));
                 RaiseCommandStates();
             }
         }
@@ -157,6 +186,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             if (SetProperty(ref _vehicleNo, value))
             {
+                OnPropertyChanged(nameof(SubmissionReadiness));
                 RaiseCommandStates();
             }
         }
@@ -169,6 +199,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             if (SetProperty(ref _itemNo, value))
             {
+                OnPropertyChanged(nameof(SubmissionReadiness));
                 RaiseCommandStates();
             }
         }
@@ -303,6 +334,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             var imageFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Images");
             _capturedImagePath = await _cameraService.CaptureFrameAsync(imageFolder, VehicleNo.Trim());
             MessageBox.Show("Image captured successfully.", "Capture", MessageBoxButton.OK, MessageBoxImage.Information);
+            OnPropertyChanged(nameof(CaptureStatus));
+            OnPropertyChanged(nameof(SubmissionReadiness));
             RaiseCommandStates();
         }
         catch (Exception ex)
@@ -382,6 +415,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         VehicleNo = string.Empty;
         ItemNo = string.Empty;
         _capturedImagePath = null;
+        OnPropertyChanged(nameof(CaptureStatus));
+        OnPropertyChanged(nameof(SubmissionReadiness));
         RaiseCommandStates();
     }
 

@@ -70,9 +70,8 @@ Install the following before running:
 4. **Webcam**
    - Needed for preview + capture workflow.
 
-5. **(Optional) Logo asset**
-   - UI references `Assets/logo.png`.
-   - If missing, either add the file or remove/replace that `Image` source in XAML.
+5. **Brand header logo**
+   - The UI includes a built-in vector/text logo badge in `MainWindow.xaml`; no external image file is required.
 
 ---
 
@@ -155,6 +154,22 @@ From repository root:
    ```bash
    dotnet run --project WaybridgeApp.csproj
    ```
+
+### Publish single-file EXE (recommended)
+
+From repository root:
+
+```bash
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+```
+
+Output EXE:
+
+```text
+bin/Release/net8.0-windows/win-x64/publish/WaybridgeApp.exe
+```
+
+A helper script is also available at `scripts/publish-win-x64.ps1`.
 
 ### First-run checks inside the app
 
