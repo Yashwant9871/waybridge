@@ -62,7 +62,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         ConnectCommand = new RelayCommand(_ => ConnectToSerial(), _ => !string.IsNullOrWhiteSpace(SelectedComPort));
         RefreshCamerasCommand = new RelayCommand(async _ => await RefreshCamerasAsync(), _ => !IsBusy);
         StartCameraCommand = new RelayCommand(async _ => await StartCameraAsync(), _ => !IsBusy && !string.IsNullOrWhiteSpace(SelectedCamera));
-        CaptureCommand = new RelayCommand(async _ => await CaptureImageAsync(), _ => !IsBusy && !string.IsNullOrWhiteSpace(VehicleNo));
+        CaptureCommand = new RelayCommand(async _ => await CaptureImageAsync(), _ => !IsBusy);
         SubmitCommand = new RelayCommand(async _ => await SubmitAsync(), _ => !IsBusy && CanSubmit());
         ResetCommand = new RelayCommand(_ => ResetForm(), _ => !IsBusy);
 
