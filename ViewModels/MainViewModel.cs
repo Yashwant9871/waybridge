@@ -6,7 +6,7 @@ using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using WaybridgeApp.Models;
 using WaybridgeApp.Services;
-
+using System.IO;
 namespace WaybridgeApp.ViewModels;
 
 public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
@@ -45,7 +45,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
     public MainViewModel()
     {
-        var connectionString = "Server=.;Database=WeighbridgeDB;Trusted_Connection=True;TrustServerCertificate=True;";
+        var connectionString = "Server=192.168.4.25,1433;Database=WeighbridgeDB;User Id=sa;Password=Yashwant@13;TrustServerCertificate=True;";
 
         _serialService = new SerialService();
         _cameraService = new CameraService();
