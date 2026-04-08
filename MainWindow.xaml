@@ -4,57 +4,75 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="Weighbridge System" Height="820" Width="1200" Background="#F5F7FA"
-        WindowStartupLocation="CenterScreen">
+        Title="Waybridge Console" Height="860" Width="1280" Background="#F3F5F9"
+        WindowStartupLocation="CenterScreen" MinHeight="760" MinWidth="1120">
     <Grid Margin="20">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Background="#2C2C2C" CornerRadius="8" Padding="12" Margin="0,0,0,16">
-            <DockPanel>
-                <Image Source="Assets/logo.png" Height="50" Width="120" Stretch="Uniform" DockPanel.Dock="Left" Margin="0,0,16,0"/>
-                <TextBlock Text="Weighbridge System" Foreground="White" FontSize="28" FontWeight="SemiBold" VerticalAlignment="Center"/>
-            </DockPanel>
+        <Border Grid.Row="0" Background="#1F2937" CornerRadius="12" Padding="16" Margin="0,0,0,16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Width="52" Height="52" CornerRadius="26" Background="#DC2626" VerticalAlignment="Center">
+                        <TextBlock Text="WB" Foreground="White" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Waybridge Console" Foreground="White" FontSize="26" FontWeight="SemiBold"/>
+                        <TextBlock Text="Live weighment, capture and submission" Foreground="#E5E7EB" FontSize="13"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <Border Grid.Column="1" Background="#111827" CornerRadius="8" Padding="10,6" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding ConnectionStatus, StringFormat=Serial: {0}}" Foreground="#F9FAFB" FontWeight="SemiBold"/>
+                </Border>
+            </Grid>
         </Border>
 
         <Grid Grid.Row="1" Margin="0,0,0,12">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*"/>
-                <ColumnDefinition Width="2*"/>
-                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="2.4*"/>
+                <ColumnDefinition Width="2.4*"/>
+                <ColumnDefinition Width="2.2*"/>
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Background="White" CornerRadius="8" Padding="12" Margin="0,0,8,0">
+            <Border Grid.Column="0" Background="White" CornerRadius="12" Padding="14" Margin="0,0,8,0">
                 <StackPanel>
-                    <TextBlock Text="Connection" FontWeight="Bold" FontSize="16" Foreground="#2C2C2C"/>
-                    <ComboBox ItemsSource="{Binding ComPorts}" SelectedItem="{Binding SelectedComPort}" Margin="0,8,0,0" MinHeight="32"/>
-                    <Button Content="Connect" Command="{Binding ConnectCommand}" Margin="0,8,0,0" MinHeight="34" Background="#E31E24" Foreground="White" FontWeight="SemiBold"/>
-                    <TextBlock Text="Status:" Margin="0,8,0,0" FontWeight="SemiBold"/>
-                    <TextBlock Text="{Binding ConnectionStatus}" Foreground="#E31E24"/>
+                    <TextBlock Text="Serial Connection" FontWeight="Bold" FontSize="16" Foreground="#111827"/>
+                    <TextBlock Text="Select COM and start reading from weighbridge" Margin="0,2,0,8" Foreground="#6B7280" FontSize="12"/>
+                    <ComboBox ItemsSource="{Binding ComPorts}" SelectedItem="{Binding SelectedComPort}" MinHeight="34"/>
+                    <Button Content="Connect" Command="{Binding ConnectCommand}" Margin="0,10,0,0" MinHeight="36" Background="#DC2626" Foreground="White" FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding ConnectionStatus}" Margin="0,10,0,0" FontWeight="SemiBold" Foreground="#1F2937"/>
                 </StackPanel>
             </Border>
 
-            <Border Grid.Column="1" Background="White" CornerRadius="8" Padding="12" Margin="8,0,8,0">
+            <Border Grid.Column="1" Background="White" CornerRadius="12" Padding="14" Margin="8,0,8,0">
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="Live Weight" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" Foreground="#2C2C2C"/>
-                    <TextBlock Text="{Binding WeightDisplay}" FontSize="40" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,16,0,0" Foreground="#2C2C2C"/>
-                    <TextBlock Text="{Binding IsWeightStable, StringFormat=Stable: {0}}" HorizontalAlignment="Center" Margin="0,10,0,0"/>
+                    <TextBlock Text="Live Weight" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" Foreground="#111827"/>
+                    <TextBlock Text="{Binding WeightDisplay}" FontSize="46" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,12,0,0" Foreground="#111827"/>
+                    <Border Background="#EEF2FF" CornerRadius="16" Padding="10,4" HorizontalAlignment="Center" Margin="0,12,0,0">
+                        <TextBlock Text="{Binding IsWeightStable, StringFormat=Stability: {0}}" Foreground="#3730A3" FontWeight="SemiBold"/>
+                    </Border>
                 </StackPanel>
             </Border>
 
-            <Border Grid.Column="2" Background="White" CornerRadius="8" Padding="12" Margin="8,0,0,0">
+            <Border Grid.Column="2" Background="White" CornerRadius="12" Padding="14" Margin="8,0,0,0">
                 <StackPanel>
-                    <TextBlock Text="Camera" FontWeight="Bold" FontSize="16" Foreground="#2C2C2C"/>
-                    <ComboBox ItemsSource="{Binding Cameras}" SelectedItem="{Binding SelectedCamera}" Margin="0,8,0,0" MinHeight="32"/>
-                    <TextBlock Text="{Binding CameraStatus}" Margin="0,8,0,0" Foreground="#2C2C2C"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                        <Button Content="Refresh" Command="{Binding RefreshCamerasCommand}" MinHeight="34" Width="90" Background="#F0F0F0" Foreground="#2C2C2C"/>
-                        <Button Content="Start Camera" Command="{Binding StartCameraCommand}" MinHeight="34" Width="110" Margin="8,0,0,0" Background="#2C2C2C" Foreground="White"/>
+                    <TextBlock Text="Camera" FontWeight="Bold" FontSize="16" Foreground="#111827"/>
+                    <TextBlock Text="Select and preview the active USB camera" Margin="0,2,0,8" Foreground="#6B7280" FontSize="12"/>
+                    <ComboBox ItemsSource="{Binding Cameras}" SelectedItem="{Binding SelectedCamera}" MinHeight="34"/>
+                    <TextBlock Text="{Binding CameraStatus}" Margin="0,10,0,0" FontWeight="SemiBold" Foreground="#1F2937"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Content="Refresh" Command="{Binding RefreshCamerasCommand}" MinHeight="36" Width="92" Background="#E5E7EB" Foreground="#111827"/>
+                        <Button Content="Start" Command="{Binding StartCameraCommand}" MinHeight="36" Width="92" Margin="8,0,0,0" Background="#111827" Foreground="White"/>
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -62,37 +80,52 @@
 
         <Grid Grid.Row="2" Margin="0,0,0,12">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="3*"/>
+                <ColumnDefinition Width="3.3*"/>
                 <ColumnDefinition Width="2*"/>
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Background="White" CornerRadius="8" Padding="12" Margin="0,0,8,0">
-                <StackPanel>
-                    <TextBlock Text="Camera Preview" FontWeight="Bold" FontSize="16" Foreground="#2C2C2C"/>
-                    <Border BorderBrush="#CCCCCC" BorderThickness="1" Height="280" Margin="0,8,0,0">
+            <Border Grid.Column="0" Background="White" CornerRadius="12" Padding="14" Margin="0,0,8,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="Camera Preview" FontWeight="Bold" FontSize="16" Foreground="#111827"/>
+                    <Border Grid.Row="1" BorderBrush="#D1D5DB" BorderThickness="1" Margin="0,10,0,0" CornerRadius="8" Background="#F9FAFB">
                         <Image Source="{Binding CameraFrame}" Stretch="Uniform"/>
                     </Border>
-                    <Button Content="Capture Image" Command="{Binding CaptureCommand}" Margin="0,10,0,0" MinHeight="36" Background="#E31E24" Foreground="White" FontWeight="SemiBold" Width="140"/>
-                </StackPanel>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Content="Capture Image" Command="{Binding CaptureCommand}" MinHeight="38" Width="150" Background="#DC2626" Foreground="White" FontWeight="SemiBold"/>
+                        <Border Background="#F3F4F6" CornerRadius="8" Padding="10,6" Margin="10,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding CaptureStatus}" Foreground="#374151" FontWeight="SemiBold"/>
+                        </Border>
+                    </StackPanel>
+                </Grid>
             </Border>
 
-            <Border Grid.Column="1" Background="White" CornerRadius="8" Padding="12" Margin="8,0,0,0">
+            <Border Grid.Column="1" Background="White" CornerRadius="12" Padding="14" Margin="8,0,0,0">
                 <StackPanel>
-                    <TextBlock Text="Record Details" FontWeight="Bold" FontSize="16" Foreground="#2C2C2C"/>
-                    <TextBlock Text="Application No" Margin="0,8,0,2"/>
-                    <TextBox Text="{Binding ApplicationNo, UpdateSourceTrigger=PropertyChanged}" MinHeight="32"/>
-                    <TextBlock Text="Vehicle No" Margin="0,8,0,2"/>
-                    <TextBox Text="{Binding VehicleNo, UpdateSourceTrigger=PropertyChanged}" MinHeight="32"/>
-                    <TextBlock Text="Item No" Margin="0,8,0,2"/>
-                    <TextBox Text="{Binding ItemNo, UpdateSourceTrigger=PropertyChanged}" MinHeight="32"/>
+                    <TextBlock Text="Record Details" FontWeight="Bold" FontSize="16" Foreground="#111827"/>
+                    <TextBlock Text="Application No" Margin="0,10,0,2"/>
+                    <TextBox Text="{Binding ApplicationNo, UpdateSourceTrigger=PropertyChanged}" MinHeight="34"/>
+                    <TextBlock Text="Vehicle No" Margin="0,10,0,2"/>
+                    <TextBox Text="{Binding VehicleNo, UpdateSourceTrigger=PropertyChanged}" MinHeight="34"/>
+                    <TextBlock Text="Item No" Margin="0,10,0,2"/>
+                    <TextBox Text="{Binding ItemNo, UpdateSourceTrigger=PropertyChanged}" MinHeight="34"/>
+                    <Border Background="#EFF6FF" CornerRadius="8" Margin="0,12,0,0" Padding="10,8">
+                        <TextBlock Text="{Binding SubmissionReadiness}" Foreground="#1D4ED8" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                    </Border>
                 </StackPanel>
             </Border>
         </Grid>
 
-        <Border Grid.Row="4" Background="White" CornerRadius="8" Padding="12">
+        <Border Grid.Row="3" Background="White" CornerRadius="12" Padding="12">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="Reset" Command="{Binding ResetCommand}" Width="120" MinHeight="38" Margin="0,0,8,0" Background="#2C2C2C" Foreground="White"/>
-                <Button Content="Submit" Command="{Binding SubmitCommand}" Width="120" MinHeight="38" Background="#E31E24" Foreground="White" FontWeight="Bold"/>
+                <Button Content="Reset" Command="{Binding ResetCommand}" Width="120" MinHeight="38" Margin="0,0,8,0" Background="#111827" Foreground="White"/>
+                <Button Content="Submit" Command="{Binding SubmitCommand}" Width="120" MinHeight="38" Background="#DC2626" Foreground="White" FontWeight="Bold"/>
             </StackPanel>
         </Border>
     </Grid>
